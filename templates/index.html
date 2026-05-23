@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DevLens — GitHub Repo Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #58a6ff;
+    }
+
+    header span {
+      font-size: 14px;
+      color: #8b949e;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 60px 20px 40px;
+    }
+
+    .hero h2 {
+      font-size: 42px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #58a6ff, #bc8cff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+
+    .hero p {
+      color: #8b949e;
+      font-size: 16px;
+      margin-bottom: 32px;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .search-box input {
+      flex: 1;
+      padding: 14px 18px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      color: #e6edf3;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: #58a6ff;
+    }
+
+    .search-box button {
+      padding: 14px 28px;
+      background: #58a6ff;
+      color: #0d1117;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .search-box button:hover { background: #79b8ff; }
+
+    #loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+      color: #8b949e;
+      font-size: 16px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #30363d;
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #error {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: #f85149;
+      background: #1c1c1c;
+      border: 1px solid #f85149;
+      border-radius: 10px;
+      max-width: 600px;
+      margin: 20px auto;
+    }
+
+    #results { display: none; max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+
+    .repo-header {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .repo-header h2 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #58a6ff;
+      margin-bottom: 6px;
+    }
+
+    .repo-header p {
+      color: #8b949e;
+      font-size: 14px;
+      max-width: 500px;
+    }
+
+    .repo-stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      text-align: center;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 12px 20px;
+    }
+
+    .stat .val {
+      font-size: 22px;
+      font-weight: 700;
+      color: #e6edf3;
+    }
+
+    .stat .lbl {
+      font-size: 11px;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .verdict-banner {
+      text-align: center;
+      padding: 24px;
+      border-radius: 14px;
+      margin-bottom: 24px;
+      border: 1px solid #30363d;
+      background: #161b22;
+    }
+
+    .verdict-banner .label {
+      font-size: 13px;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .verdict-banner .verdict {
+      font-size: 36px;
+      font-weight: 800;
+    }
+
+    .verdict-banner .overall {
+      font-size: 16px;
+      color: #8b949e;
+      margin-top: 6px;
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      padding: 24px;
+    }
+
+    .card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 20px;
+    }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .score-row .name {
+      width: 130px;
+      font-size: 13px;
+      color: #e6edf3;
+    }
+
+    .score-bar {
+      flex: 1;
+      height: 8px;
+      background: #21262d;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s ease;
+    }
+
+    .score-row .score-num {
+      width: 36px;
+      text-align: right;
+      font-size: 13px;
+      font-weight: 600;
+      color: #e6edf3;
+    }
+
+    .lang-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .lang-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .lang-name { font-size: 13px; flex: 1; }
+
+    .lang-pct {
+      font-size: 13px;
+      color: #8b949e;
+    }
+
+    .contributors-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .contributor {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 8px 12px;
+      text-decoration: none;
+      color: #e6edf3;
+      font-size: 13px;
+      transition: border-color 0.2s;
+    }
+
+    .contributor:hover { border-color: #58a6ff; }
+
+    .contributor img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+    }
+
+    .full-width { grid-column: 1 / -1; }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .info-item { }
+    .info-item .key { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .info-item .value { font-size: 14px; color: #e6edf3; }
+
+    canvas { max-height: 220px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🔍 DevLens</h1>
+  <span>GitHub Repository Analyzer</span>
+</header>
+
+<div class="hero">
+  <h2>Analyze Any GitHub Repo</h2>
+  <p>Get deep insights on code quality, activity, documentation and more — instantly.</p>
+  <div class="search-box">
+    <input type="text" id="repoUrl" placeholder="https://github.com/owner/repository" />
+    <button onclick="analyze()">Analyze</button>
+  </div>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  Analyzing repository...
+</div>
+
+<div id="error"></div>
+
+<div id="results">
+
+  <div class="repo-header">
+    <div>
+      <h2 id="repoName"></h2>
+      <p id="repoDesc"></p>
+      <a id="repoLink" href="#" target="_blank" style="color:#58a6ff;font-size:13px;margin-top:8px;display:inline-block;">View on GitHub →</a>
+    </div>
+    <div class="repo-stats">
+      <div class="stat"><div class="val" id="stars">0</div><div class="lbl">Stars</div></div>
+      <div class="stat"><div class="val" id="forks">0</div><div class="lbl">Forks</div></div>
+      <div class="stat"><div class="val" id="commits">0</div><div class="lbl">Commits</div></div>
+      <div class="stat"><div class="val" id="issues">0</div><div class="lbl">Issues</div></div>
+    </div>
+  </div>
+
+  <div class="verdict-banner">
+    <div class="label">Overall Verdict</div>
+    <div class="verdict" id="verdictText"></div>
+    <div class="overall" id="overallScore"></div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <h3>Health Scores</h3>
+      <div class="score-row">
+        <span class="name">Documentation</span>
+        <div class="score-bar"><div class="score-fill" id="bar-doc" style="background:#58a6ff"></div></div>
+        <span class="score-num" id="num-doc"></span>
+      </div>
+      <div class="score-row">
+        <span class="name">Activity</span>
+        <div class="score-bar"><div class="score-fill" id="bar-act" style="background:#3fb950"></div></div>
+        <span class="score-num" id="num-act"></span>
+      </div>
+      <div class="score-row">
+        <span class="name">Community</span>
+        <div class="score-bar"><div class="score-fill" id="bar-com" style="background:#f78166"></div></div>
+        <span class="score-num" id="num-com"></span>
+      </div>
+      <div class="score-row">
+        <span class="name">Tech Diversity</span>
+        <div class="score-bar"><div class="score-fill" id="bar-tech" style="background:#bc8cff"></div></div>
+        <span class="score-num" id="num-tech"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Languages</h3>
+      <canvas id="langChart"></canvas>
+      <div id="langList" style="margin-top:16px"></div>
+    </div>
+
+    <div class="card full-width">
+      <h3>Contributors</h3>
+      <div class="contributors-list" id="contributorsList"></div>
+    </div>
+
+    <div class="card full-width">
+      <h3>Repository Info</h3>
+      <div class="info-grid">
+        <div class="info-item"><div class="key">Default Branch</div><div class="value" id="branch"></div></div>
+        <div class="info-item"><div class="key">Repo Size</div><div class="value" id="size"></div></div>
+        <div class="info-item"><div class="key">Created</div><div class="value" id="created"></div></div>
+        <div class="info-item"><div class="key">Last Updated</div><div class="value" id="updated"></div></div>
+        <div class="info-item"><div class="key">Watchers</div><div class="value" id="watchers"></div></div>
+        <div class="info-item"><div class="key">Open Issues</div><div class="value" id="openIssues"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let langChartInstance = null;
+
+  const LANG_COLORS = [
+    "#58a6ff","#bc8cff","#3fb950","#f78166",
+    "#ffa657","#79c0ff","#d2a8ff","#56d364"
+  ];
+
+  async function analyze() {
+    const url = document.getElementById("repoUrl").value.trim();
+    if (!url) return;
+
+    document.getElementById("results").style.display = "none";
+    document.getElementById("error").style.display = "none";
+    document.getElementById("loading").style.display = "block";
+
+    try {
+      const res = await fetch("/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        showError(data.error);
+        return;
+      }
+
+      renderResults(data);
+
+    } catch (e) {
+      showError("Something went wrong. Please try again.");
+    } finally {
+      document.getElementById("loading").style.display = "none";
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById("loading").style.display = "none";
+    const el = document.getElementById("error");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+
+  function formatDate(dateStr) {
+    return new Date(dateStr).toLocaleDateString("en-US", { year:"numeric", month:"short", day:"numeric" });
+  }
+
+  function renderResults(data) {
+    const { repo, languages, commit_count, contributors, scores, verdict, verdict_color } = data;
+
+    document.getElementById("repoName").textContent = repo.full_name;
+    document.getElementById("repoDesc").textContent = repo.description || "No description provided.";
+    document.getElementById("repoLink").href = repo.url;
+    document.getElementById("stars").textContent = repo.stars.toLocaleString();
+    document.getElementById("forks").textContent = repo.forks.toLocaleString();
+    document.getElementById("commits").textContent = commit_count.toLocaleString();
+    document.getElementById("issues").textContent = repo.open_issues.toLocaleString();
+
+    document.getElementById("verdictText").textContent = verdict;
+    document.getElementById("verdictText").style.color = verdict_color;
+    document.getElementById("overallScore").textContent = `Overall Score: ${scores.overall}/100`;
+
+    setBar("doc", scores.documentation);
+    setBar("act", scores.activity);
+    setBar("com", scores.community);
+    setBar("tech", scores.tech_diversity);
+
+    renderLangChart(languages);
+
+    document.getElementById("branch").textContent = repo.default_branch;
+    document.getElementById("size").textContent = (repo.size / 1024).toFixed(1) + " MB";
+    document.getElementById("created").textContent = formatDate(repo.created_at);
+    document.getElementById("updated").textContent = formatDate(repo.updated_at);
+    document.getElementById("watchers").textContent = repo.watchers.toLocaleString();
+    document.getElementById("openIssues").textContent = repo.open_issues.toLocaleString();
+
+    const cl = document.getElementById("contributorsList");
+    cl.innerHTML = "";
+    contributors.forEach(c => {
+      cl.innerHTML += `<a class="contributor" href="${c.url}" target="_blank">
+        <img src="${c.avatar}" alt="${c.login}" />
+        ${c.login} <span style="color:#8b949e;margin-left:4px">(${c.contributions})</span>
+      </a>`;
+    });
+
+    document.getElementById("results").style.display = "block";
+  }
+
+  function setBar(key, value) {
+    document.getElementById(`bar-${key}`).style.width = value + "%";
+    document.getElementById(`num-${key}`).textContent = value;
+  }
+
+  function renderLangChart(languages) {
+    const total = Object.values(languages).reduce((a, b) => a + b, 0);
+    const labels = Object.keys(languages);
+    const values = Object.values(languages).map(v => ((v / total) * 100).toFixed(1));
+
+    if (langChartInstance) langChartInstance.destroy();
+
+    const ctx = document.getElementById("langChart").getContext("2d");
+    langChartInstance = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: LANG_COLORS.slice(0, labels.length),
+          borderWidth: 2,
+          borderColor: "#161b22"
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        cutout: "70%"
+      }
+    });
+
+    const langList = document.getElementById("langList");
+    langList.innerHTML = "";
+    labels.forEach((lang, i) => {
+      langList.innerHTML += `<div class="lang-item">
+        <div class="lang-dot" style="background:${LANG_COLORS[i]}"></div>
+        <span class="lang-name">${lang}</span>
+        <span class="lang-pct">${values[i]}%</span>
+      </div>`;
+    });
+  }
+
+  document.getElementById("repoUrl").addEventListener("keydown", e => {
+    if (e.key === "Enter") analyze();
+  });
+</script>
+
+</body>
+</html>
