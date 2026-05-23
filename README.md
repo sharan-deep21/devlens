@@ -17,12 +17,18 @@
 
 Paste any GitHub repository URL and DevLens instantly gives you:
 
-- 📊 **Health Scores** — Documentation, Activity, Community, Tech Diversity
+- 📊 **Health Scores** — Documentation, Activity, Community, Tech Diversity, README Quality
 - 🏆 **Overall Verdict** — From "Excellent" to "Abandon Ship"
 - 🌐 **Language Breakdown** — Beautiful donut chart with percentages
 - 👥 **Contributors** — Top contributors with avatars
 - 📈 **Repository Stats** — Stars, Forks, Commits, Issues
 - 📋 **Repo Info** — Created date, last updated, size, branch
+- 📉 **Commit History Graph** — Monthly commit activity chart
+- 🔍 **Code Quality Analysis** — Detects tests, CI/CD, Docker, env files
+- 📝 **README Scorer** — Analyzes your README quality with feedback
+- 🔗 **Similar Repos** — Suggests related repositories
+- ⚔️ **Compare Two Repos** — Side by side comparison with winner highlights
+- 👤 **GitHub Profile Analyzer** — Full developer scorecard with top repos
 
 ---
 
